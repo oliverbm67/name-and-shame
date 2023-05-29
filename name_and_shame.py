@@ -21,9 +21,9 @@ def public_shame(msg):
     process = os.popen(cmd)
     process.close()
 
-def get_usage(top_output, CPU_LEVEL=10.0):
+def get_usage(top_output, level=10.0):
     """Return all processes above the CPU_USAGE level"""
-    high_process = {}
+    process = {}
     for line in top_output.split("\n"):
         row = line.split()
         if len(row) != 0:
@@ -33,42 +33,46 @@ def get_usage(top_output, CPU_LEVEL=10.0):
                 user = row[1]
                 cpu = float(row[8].replace(",","."))        ## Convert CPU usage to float value
                 command = " ".join(row[11:])                ## Recover command
-                if cpu > CPU_LEVEL:
-                    high_process[pid] = [user,cpu,command]
-            except:
+                if cpu > level:
+                    process[pid] = [user,cpu,command]
+            except ValueError:
                 pass
-    return high_process
+    return process
 
 ## Command line argument parsing
 parser = argparse.ArgumentParser()
-parser.add_argument("--level", help="Threshold for the CPU level",type=float, default=80.0)
-parser.add_argument("--time", help="How long a process has before being reported",type=float, default=20.0)
-parser.add_argument("--name", help="Display the name of offending user",action="store_true")
-parser.add_argument("--shame", help="Use Wall to send the message instead of stdout",action="store_true")
+parser.add_argument("--level", help="Threshold for the CPU level",
+                    type=float, default=80.0)
+parser.add_argument("--time", help="How long a process has before being reported",
+                    type=float, default=20.0)
+parser.add_argument("--name", help="Display the name of offending user",
+                    action="store_true")
+parser.add_argument("--shame", help="Use Wall to send the message instead of stdout",
+                    action="store_true")
 args = parser.parse_args()
-CPU_LEVEL = args.level
+cpu_level = args.level
 SAMPLING_TIME = args.time
 NAMED_USER = args.name
 PUBLIC = args.shame
 
 ## High PID counter
-previous_process = None
+PREVIOUS_PROCESS = None
 while True:
     top_out = get_top()
-    high_process = get_usage(top_out, CPU_LEVEL)
-    if previous_process is not None:            ## Starting condition
-        for new_ps in high_process:
-            if new_ps in previous_process:
+    high_process = get_usage(top_out, cpu_level)
+    if PREVIOUS_PROCESS is not None:            ## Starting condition
+        for new_pid, new_process in high_process:
+            if new_pid in PREVIOUS_PROCESS:
                 if NAMED_USER:
-                    offender = high_process[new_ps][0]
+                    OFFENDER = new_process[0]
                 else:
-                    offender = "someone"
-                report_message = f"{offender} is using too much CPU for {high_process[new_ps][2]}"
+                    OFFENDER = "someone"
+                report_message = f"{OFFENDER} is using too much CPU for {new_process[2]}"
                 if PUBLIC:
                     public_shame(report_message)
                 else:
                     print(report_message)
     ## Copy the high process
-    previous_process = copy.deepcopy(high_process)
+    PREVIOUS_PROCESS = copy.deepcopy(high_process)
     ## Delay
     time.sleep(SAMPLING_TIME)
