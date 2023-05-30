@@ -61,7 +61,7 @@ while True:
     top_out = get_top()
     high_process = get_usage(top_out, cpu_level)
     if PREVIOUS_PROCESS is not None:            ## Starting condition
-        for new_pid, new_process in high_process:
+        for new_pid, new_process in high_process.items():
             if new_pid in PREVIOUS_PROCESS:
                 if NAMED_USER:
                     OFFENDER = new_process[0]
